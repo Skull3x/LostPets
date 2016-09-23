@@ -23,6 +23,8 @@ use pocketmine\Player;
 use pocketmine\utils\Config;
 use pocketmine\utils\Utils;
 use pocketmine\utils\TextFormat as TF;
+use pocketmine\network\protocol\SetEntityLinkPacket;
+use pocketmine\network\protocol\AddEntityPacket;
 
 class Main extends PluginBase implements Listener {
 
@@ -92,6 +94,32 @@ class Main extends PluginBase implements Listener {
 			}
 		}
 	}
+	
+	public function sit(Player $player, $type) {
+		if (isset($this->pets[$player->getName()]) != true) {
+			$pets = array("ChickenPet", "PigPet","WolfPet", "OcelotPet", "CowPet", "CreeperPet");
+			$player = $event->getPlayer();
+			$pk = new AddEntityPacket();
+			$pk->eid = $this->getId();
+			$pk->type = static::NETWORK_ID;
+			$pk->x = $this->x;
+			$pk->y = $this->y;
+			$pk->z = $this->z;
+			$pk->speedX = 0;
+			$pk->speedY = 0;
+			$pk->speedZ = 0;
+			$pk->yaw = $this->yaw;
+			$pk->pitch = $this->pitch;
+			$pk->metadata = [Entity::DATA_FLAGS => [Entity::DATA_TYPE_BYTE,1 << Entity::DATA_FLAG_RIDING]];
+			$player->dataPacket($pk);
+			$this->hasSpawned[$player->getId()] = $player;
+			$pk = new SetEntityLinkPacket();
+			$pk->from = $player->getId();
+			$pk->to = $player->getId();
+			$pk->type = static::NETWORK_ID;
+			$player->dataPacket($pk);
+			$this->hasSpawned[$player->getId()] = $player;
+	}
 
     /**
      * @param CommandSender $sender
@@ -131,6 +159,17 @@ class Main extends PluginBase implements Listener {
 						$this->getPet($sender)->setNameTag($args[1]);
 						$this->getPet($sender)->setName($args[1]);
 						$sender->sendMessage("Name now set to: ".$args[1]);
+					}
+					break;
+				case "sit":
+					if(!$sender->hasPermission('pet.command.sit')) {
+						$sender->sendMessage(TF::RED . "You do not have permission to use this command");
+						return true;
+					}
+					if (isset($args[1])) {
+						$this->getPet($sender)->sit();
+						$this->getPet($sender)->sit();
+						$sender->sendMessage("Your pet has been set in place");
 					}
 					break;
 				case "cycle":
